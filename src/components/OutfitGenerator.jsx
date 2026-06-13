@@ -3,7 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../lib/toast.jsx'
 import CategoryIcon from '../lib/categoryIcon'
 
-const SUGGESTIONS = ['Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner']
+const SUGGESTIONS = [
+  'Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner',
+  'Job interview', 'Office day', 'Friends hangout', 'Date night', 'Travel day', 'Religious gathering',
+  'Birthday party', 'Outdoor brunch', 'Gym workout', 'Rainy day', 'Winter outing', 'Funeral / condolence',
+]
 
 const ITEM_W = 84
 const GAP = 10
