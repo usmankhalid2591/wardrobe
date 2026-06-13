@@ -376,6 +376,65 @@ input, textarea, select { font-family: var(--font-mono); }
 }
 .photo-alt-link input { display: none; }
 
+/* ---------- In-app camera ---------- */
+.camera-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 60vh;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ink);
+  margin: 14px 0;
+}
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.camera-flip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(26, 23, 20, 0.5);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.camera-shutter {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 4px solid var(--paper);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.camera-shutter::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--paper);
+  transform: scale(0.8);
+  transition: transform 0.1s;
+}
+.camera-shutter:active::after { transform: scale(0.65); }
+.camera-actions { display: flex; gap: 10px; margin: 14px 0; }
+.camera-actions .btn { flex: 1; }
+
 /* ---------- Add-piece choice screen ---------- */
 .add-choice { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 4px; }
 .choice-btn {

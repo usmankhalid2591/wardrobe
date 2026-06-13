@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage, blobToDataURL } from '../lib/compressImage'
 import { useToast } from '../lib/toast.jsx'
@@ -19,7 +19,13 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
   const [identifying, setIdentifying] = useState(false)
   // 'choice' (new items only) -> 'ai-photo' -> 'form', or straight to 'form'
   const [mode, setMode] = useState(item ? 'form' : 'choice')
+  // In-app camera state: null = starting up, true = unavailable (fall back to file picker), false = live
+  const [cameraError, setCameraError] = useState(null)
+  const [captured, setCaptured] = useState(null) // { blob, url }
+  const [facing, setFacing] = useState('environment')
   const identifyId = useRef(0)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -30,15 +36,80 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
     setPreview(URL.createObjectURL(f))
   }
 
-  async function pickAiPhoto(e) {
-    const f = e.target.files?.[0]
-    if (!f) return
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+  }
+
+  async function startCamera(face) {
+    stopCamera()
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError(true)
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: face },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
+      setCameraError(false)
+    } catch {
+      setCameraError(true)
+    }
+  }
+
+  // Start/stop the live camera as we enter/leave the ai-photo step.
+  useEffect(() => {
+    if (mode === 'ai-photo' && !captured) {
+      startCamera(facing)
+    } else {
+      stopCamera()
+    }
+  }, [mode, captured])
+
+  // Always release the camera if the form unmounts.
+  useEffect(() => () => stopCamera(), [])
+
+  function flipCamera() {
+    const next = facing === 'environment' ? 'user' : 'environment'
+    setFacing(next)
+    startCamera(next)
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(blob => {
+      if (!blob) return
+      setCaptured({ blob, url: URL.createObjectURL(blob) })
+    }, 'image/jpeg', 0.92)
+  }
+
+  function retake() {
+    setCaptured(c => {
+      if (c) URL.revokeObjectURL(c.url)
+      return null
+    })
+  }
+
+  async function identifyPhoto(blob) {
     const id = ++identifyId.current
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+    setFile(blob)
+    setPreview(URL.createObjectURL(blob))
     setIdentifying(true)
     try {
-      const small = await compressImage(f, { maxDim: 768, quality: 0.7 })
+      const small = await compressImage(blob, { maxDim: 768, quality: 0.7 })
       const dataUrl = await blobToDataURL(small)
       const res = await fetch('/.netlify/functions/identify-item', {
         method: 'POST',
@@ -68,6 +139,17 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
         setMode('form')
       }
     }
+  }
+
+  function useCapturedPhoto() {
+    if (!captured) return
+    identifyPhoto(captured.blob)
+  }
+
+  function pickAiPhoto(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    identifyPhoto(f)
   }
 
   useEscClose(onClose, !busy)
@@ -144,17 +226,59 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
         <div className="sheet" onClick={e => e.stopPropagation()}>
           <h2>Take a photo</h2>
           <p className="hint">I'll suggest the color, material, and category from the photo — you can review and edit everything on the next screen.</p>
-          <div className="photo-input">
-            <div className="photo-preview" style={preview ? { backgroundImage: `url(${preview})` } : {}} />
-            <input type="file" accept="image/*" capture="environment" onChange={pickAiPhoto} disabled={identifying} />
-          </div>
-          <label className="photo-alt-link">
-            or choose an existing photo
-            <input type="file" accept="image/*" onChange={pickAiPhoto} disabled={identifying} />
-          </label>
+
+          {cameraError === false && !captured && (
+            <div className="camera-view">
+              <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
+              <button type="button" className="camera-flip" onClick={flipCamera} aria-label="Switch camera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                  <path d="M3 21v-5h5" />
+                </svg>
+              </button>
+              <button type="button" className="camera-shutter" onClick={capturePhoto} aria-label="Take photo" />
+            </div>
+          )}
+
+          {cameraError === false && captured && (
+            <div className="camera-view">
+              <img src={captured.url} className="camera-video" alt="Captured" />
+            </div>
+          )}
+
+          {captured && (
+            <div className="camera-actions">
+              <button type="button" className="btn ghost" onClick={retake} disabled={identifying}>Retake</button>
+              <button type="button" className="btn" onClick={useCapturedPhoto} disabled={identifying}>
+                {identifying ? 'Identifying…' : 'Use this photo'}
+              </button>
+            </div>
+          )}
+
+          {cameraError === true && (
+            <>
+              <div className="photo-input">
+                <div className="photo-preview" style={preview ? { backgroundImage: `url(${preview})` } : {}} />
+                <input type="file" accept="image/*" capture="environment" onChange={pickAiPhoto} disabled={identifying} />
+              </div>
+              <label className="photo-alt-link">
+                or choose an existing photo
+                <input type="file" accept="image/*" onChange={pickAiPhoto} disabled={identifying} />
+              </label>
+            </>
+          )}
+
+          {cameraError === null && (
+            <div className="loading-row"><span className="spinner" /> Starting camera…</div>
+          )}
+
           {identifying && (
             <div className="ai-identifying"><span className="spinner" /> Identifying…</div>
           )}
+
           <div className="sheet-actions">
             <button type="button" className="btn ghost" onClick={onClose} disabled={identifying}>Cancel</button>
             <button type="button" className="btn ghost" onClick={() => setMode('form')} disabled={identifying}>
