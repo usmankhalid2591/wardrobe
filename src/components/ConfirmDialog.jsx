@@ -1,6 +1,10 @@
+import { useEscClose } from '../lib/useEscClose'
+
 // Small in-app confirmation dialog, styled to match the ledger aesthetic.
 // Replaces window.confirm().
 export default function ConfirmDialog({ title, message, confirmLabel = 'Confirm', busy, onConfirm, onCancel }) {
+  useEscClose(onCancel, !busy)
+
   return (
     <div className="scrim" onClick={onCancel}>
       <div className="sheet confirm-sheet" onClick={e => e.stopPropagation()}>

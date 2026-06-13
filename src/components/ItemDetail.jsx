@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import CategoryIcon from '../lib/categoryIcon'
 import { STATUS_ORDER, statusInfo } from '../lib/status'
+import { useEscClose } from '../lib/useEscClose'
 
 const STATUS_ACTION_LABEL = {
   ready: 'Mark ready',
@@ -19,6 +21,10 @@ function formatLastWorn(dateStr) {
 }
 
 export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, wearing, onStatus, settingStatus }) {
+  const [lightbox, setLightbox] = useState(false)
+
+  useEscClose(() => (lightbox ? setLightbox(false) : onClose()))
+
   if (!item) return null
 
   const status = item.status || 'ready'
@@ -26,7 +32,10 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
   return (
     <div className="scrim" onClick={onClose}>
       <div className="sheet detail-sheet" onClick={e => e.stopPropagation()}>
-        <div className="detail-photo" style={item.photo_url ? { backgroundImage: `url(${item.photo_url})` } : {}}>
+        <div className="detail-photo" style={item.photo_url ? { backgroundImage: `url(${item.photo_url})` } : {}}
+          onClick={item.photo_url ? () => setLightbox(true) : undefined}
+          role={item.photo_url ? 'button' : undefined}
+          aria-label={item.photo_url ? 'View larger photo' : undefined}>
           {!item.photo_url && <CategoryIcon tags={item.tags} className="detail-icon" />}
           <span className={`status-badge status-${status}`}>{statusInfo(status).label}</span>
         </div>
@@ -74,6 +83,13 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
           </div>
         </div>
       </div>
+
+      {lightbox && item.photo_url && (
+        <div className="lightbox" onClick={e => { e.stopPropagation(); setLightbox(false) }}>
+          <img src={item.photo_url} alt={item.name} />
+          <button type="button" className="lightbox-close" onClick={e => { e.stopPropagation(); setLightbox(false) }}>×</button>
+        </div>
+      )}
     </div>
   )
 }

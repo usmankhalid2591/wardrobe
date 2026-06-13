@@ -124,6 +124,8 @@ input, textarea, select { font-family: var(--font-mono); }
   padding: 10px 12px;
   font-size: 12px;
   color: var(--ink);
+  min-width: 0;
+  max-width: 100%;
 }
 .sort:focus { outline: 2px solid var(--oxblood); outline-offset: -1px; }
 
@@ -345,7 +347,8 @@ input, textarea, select { font-family: var(--font-mono); }
 .row .field { flex: 1; }
 .hint { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
-.photo-input { display: flex; align-items: center; gap: 12px; }
+.photo-input { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.photo-input input[type="file"] { flex: 1; min-width: 0; }
 .photo-preview {
   width: 64px; height: 64px;
   border-radius: 3px;
@@ -353,6 +356,25 @@ input, textarea, select { font-family: var(--font-mono); }
   background-size: cover; background-position: center;
   background-color: var(--paper);
 }
+.ai-identifying {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.ai-identifying .spinner { width: 14px; height: 14px; border-width: 2px; }
+.ai-suggestions { margin-top: 10px; }
+.ai-suggestions-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ai-suggestions .chips { margin-bottom: 0; }
+
 .sheet-actions { display: flex; gap: 10px; margin-top: 22px; }
 .sheet-actions .btn { flex: 1; }
 
@@ -370,6 +392,7 @@ input, textarea, select { font-family: var(--font-mono); }
   align-items: center;
   justify-content: center;
 }
+.detail-photo[role="button"] { cursor: zoom-in; }
 .detail-icon { display: block; width: 28%; height: 28%; color: var(--paper-line); }
 .detail-icon svg { width: 100%; height: 100%; display: block; }
 .detail-body { padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
@@ -428,6 +451,7 @@ input, textarea, select { font-family: var(--font-mono); }
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--paper-line);
+  flex-wrap: wrap;
 }
 .wear-info { display: flex; flex-direction: column; gap: 2px; }
 .wear-last { font-size: 13px; font-weight: 500; color: var(--ink); }
@@ -479,9 +503,10 @@ input, textarea, select { font-family: var(--font-mono); }
   background: none;
   border: none;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
-  padding: 0 2px;
+  padding: 4px 5px;
+  margin: -4px -5px -4px 1px;
 }
 .tag-chip button:hover { color: var(--danger); }
 .tag-suggestions {
@@ -542,7 +567,7 @@ input, textarea, select { font-family: var(--font-mono); }
   background: none;
   border: 1px solid var(--paper-line);
   border-radius: 14px;
-  padding: 5px 12px;
+  padding: 7px 14px;
   color: var(--ink-soft);
 }
 .chip:hover { border-color: var(--oxblood); color: var(--oxblood); }
@@ -642,13 +667,71 @@ input, textarea, select { font-family: var(--font-mono); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ---------- Skeleton loaders ---------- */
+.skeleton-tile { cursor: default; }
+.skeleton-line {
+  height: 9px;
+  border-radius: 2px;
+  margin: 3px 0;
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--paper) 25%, var(--paper-line) 50%, var(--paper) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ---------- Lightbox ---------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 20, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; }
   .toast { animation: none; }
+  .skeleton-shimmer { animation: none; }
   * { transition: none !important; }
 }
 
 @media (min-width: 560px) {
   .scrim { align-items: center; }
   .sheet { border-radius: 8px; }
+}
+
+/* ---------- Narrow phones ---------- */
+@media (max-width: 380px) {
+  .masthead h1 { font-size: 28px; }
+  .row { flex-direction: column; gap: 14px; }
+  .gen-input-row { flex-wrap: wrap; }
+  .gen-input-row .btn { flex: 1 1 100%; }
 }

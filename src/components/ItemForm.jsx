@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/compressImage'
+import { compressImage, blobToDataURL } from '../lib/compressImage'
 import { useToast } from '../lib/toast.jsx'
+import { useEscClose } from '../lib/useEscClose'
 import TagInput from './TagInput'
 
 const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '' }
@@ -15,6 +16,9 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
   const [preview, setPreview] = useState(item?.photo_url || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [identifying, setIdentifying] = useState(false)
+  const [suggestions, setSuggestions] = useState(null)
+  const identifyId = useRef(0)
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
@@ -23,7 +27,55 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
     if (!f) return
     setFile(f)
     setPreview(URL.createObjectURL(f))
+    setSuggestions(null)
+    identify(f)
   }
+
+  async function identify(f) {
+    const id = ++identifyId.current
+    setIdentifying(true)
+    try {
+      const small = await compressImage(f, { maxDim: 768, quality: 0.7 })
+      const dataUrl = await blobToDataURL(small)
+      const res = await fetch('/.netlify/functions/identify-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl, mimeType: small.type || 'image/jpeg' }),
+      })
+      if (id !== identifyId.current) return
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.category || data.color || data.material) {
+        setSuggestions(data)
+      }
+    } catch {
+      // Identification is a nice-to-have — fail silently.
+    } finally {
+      if (id === identifyId.current) setIdentifying(false)
+    }
+  }
+
+  function acceptCategory() {
+    if (!suggestions?.category) return
+    if (!form.tags.includes(suggestions.category)) {
+      set('tags', [...form.tags, suggestions.category])
+    }
+    setSuggestions(s => ({ ...s, category: '' }))
+  }
+
+  function acceptColor() {
+    if (!suggestions?.color) return
+    set('color', suggestions.color)
+    setSuggestions(s => ({ ...s, color: '' }))
+  }
+
+  function acceptMaterial() {
+    if (!suggestions?.material) return
+    set('material', suggestions.material)
+    setSuggestions(s => ({ ...s, material: '' }))
+  }
+
+  useEscClose(onClose, !busy)
 
   async function save(e) {
     e.preventDefault()
@@ -108,6 +160,32 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
               <input type="file" accept="image/*" onChange={pickFile} />
             </div>
             <div className="hint">Large photos are resized automatically before upload.</div>
+
+            {identifying && (
+              <div className="ai-identifying"><span className="spinner" /> Identifying…</div>
+            )}
+            {suggestions && (suggestions.category || suggestions.color || suggestions.material) && (
+              <div className="ai-suggestions">
+                <div className="ai-suggestions-label">Suggested — tap to apply</div>
+                <div className="chips">
+                  {suggestions.category && (
+                    <button type="button" className="chip" onClick={acceptCategory}>
+                      + {suggestions.category}
+                    </button>
+                  )}
+                  {suggestions.color && (
+                    <button type="button" className="chip" onClick={acceptColor}>
+                      Color: {suggestions.color}
+                    </button>
+                  )}
+                  {suggestions.material && (
+                    <button type="button" className="chip" onClick={acceptMaterial}>
+                      Material: {suggestions.material}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="sheet-actions">
             <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>

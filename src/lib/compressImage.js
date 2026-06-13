@@ -1,3 +1,13 @@
+// Read a Blob/File as a base64 data URL.
+export function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 // Resize + compress an image file in-browser before upload.
 // Keeps Supabase storage usage low and the grid fast.
 export async function compressImage(file, { maxDim = 1280, quality = 0.82 } = {}) {

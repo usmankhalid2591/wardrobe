@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import CategoryIcon from '../lib/categoryIcon'
 import { useToast } from '../lib/toast.jsx'
@@ -22,6 +22,19 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
   const [deleting, setDeleting] = useState(false)
   const [wearing, setWearing] = useState(false)
   const [settingStatus, setSettingStatus] = useState(false)
+  const searchRef = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (e.key !== '/') return
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      e.preventDefault()
+      searchRef.current?.focus()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const allTags = useMemo(() => {
     const set = new Set()
@@ -124,13 +137,25 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
   }
 
   if (loading) {
-    return <div className="loading-row"><span className="spinner" /> Loading your wardrobe…</div>
+    return (
+      <div className="photo-grid">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div className="tile skeleton-tile" key={i}>
+            <div className="tile-photo skeleton-shimmer" />
+            <div className="tile-label">
+              <div className="skeleton-line skeleton-shimmer" style={{ width: '70%' }} />
+              <div className="skeleton-line skeleton-shimmer" style={{ width: '45%' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
     <>
       <div className="toolbar">
-        <input className="search" placeholder="Search name, brand, color, tag…"
+        <input ref={searchRef} className="search" placeholder="Search name, brand, color, tag… (press /)"
           value={q} onChange={e => setQ(e.target.value)} />
         <select className="sort" value={sort} onChange={e => setSort(e.target.value)}>
           <option value="newest">Newest first</option>
