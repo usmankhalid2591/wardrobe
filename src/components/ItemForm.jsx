@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { compressImage, blobToDataURL } from '../lib/compressImage'
 import { useToast } from '../lib/toast.jsx'
 import { useEscClose } from '../lib/useEscClose'
+import { useSettings } from '../lib/settings'
+import { CURRENCIES } from '../lib/currency'
 import TagInput from './TagInput'
 
 const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '', price: '', in_storage: false }
@@ -25,6 +27,8 @@ function findDuplicates(items, { category, color, excludeId }) {
 
 export default function ItemForm({ item, userId, allTags, items, onClose, onSaved }) {
   const showToast = useToast()
+  const { settings } = useSettings()
+  const currencySymbol = (CURRENCIES[settings.currency] || CURRENCIES.PKR).symbol
   const [form, setForm] = useState(item
     ? { ...item, tags: item.tags || [], price: item.price ?? '', in_storage: !!item.in_storage }
     : blank)
@@ -35,7 +39,7 @@ export default function ItemForm({ item, userId, allTags, items, onClose, onSave
   const [identifying, setIdentifying] = useState(false)
   const [duplicates, setDuplicates] = useState([])
   // 'choice' (new items only) -> 'ai-photo' -> 'form', or straight to 'form'
-  const [mode, setMode] = useState(item ? 'form' : 'choice')
+  const [mode, setMode] = useState(item || !settings.ai_identify ? 'form' : 'choice')
   // In-app camera state: null = starting up, true = unavailable (fall back to file picker), false = live
   const [cameraError, setCameraError] = useState(null)
   const [captured, setCaptured] = useState(null) // { blob, url }
@@ -353,7 +357,7 @@ export default function ItemForm({ item, userId, allTags, items, onClose, onSave
             <input value={form.material} onChange={e => set('material', e.target.value)} />
           </div>
           <div className="field">
-            <label>Price (Rs)</label>
+            <label>Price ({currencySymbol})</label>
             <input type="number" min="0" inputMode="decimal" value={form.price}
               onChange={e => set('price', e.target.value)} placeholder="Optional — for cost-per-wear" />
           </div>

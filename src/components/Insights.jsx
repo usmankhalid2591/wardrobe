@@ -1,4 +1,5 @@
-import { formatRs, costPerWear } from '../lib/currency'
+import { formatCurrency, costPerWear } from '../lib/currency'
+import { useSettings } from '../lib/settings'
 
 function BarRow({ label, count, max }) {
   const pct = max ? Math.round((count / max) * 100) : 0
@@ -12,6 +13,8 @@ function BarRow({ label, count, max }) {
 }
 
 export default function Insights({ items }) {
+  const { settings } = useSettings()
+
   if (items.length === 0) {
     return <div className="empty"><h3>Nothing to show yet</h3><p>Add pieces and log wears to see insights here.</p></div>
   }
@@ -57,7 +60,7 @@ export default function Insights({ items }) {
           <div className="stat-label">Wears logged</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{formatRs(totalValue) || '—'}</div>
+          <div className="stat-value">{formatCurrency(totalValue, settings.currency) || '—'}</div>
           <div className="stat-label">Wardrobe value</div>
         </div>
         <div className="stat-card">
@@ -87,7 +90,7 @@ export default function Insights({ items }) {
             {cpwItems.map(({ it, cpw }) => (
               <li key={it.id}>
                 <span>{it.name}</span>
-                <span className="rank-count">{formatRs(cpw)} / wear</span>
+                <span className="rank-count">{formatCurrency(cpw, settings.currency)} / wear</span>
               </li>
             ))}
           </ol>

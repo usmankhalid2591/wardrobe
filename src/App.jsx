@@ -1,15 +1,23 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
 import { supabase } from './lib/supabase'
+import { SettingsProvider } from './lib/settings'
 import Auth from './components/Auth'
 import ResetPassword from './components/ResetPassword'
 import ItemList from './components/ItemList'
-import ItemForm from './components/ItemForm'
-import OutfitGenerator from './components/OutfitGenerator'
-import SavedOutfits from './components/SavedOutfits'
-import WearLog from './components/WearLog'
-import PackingList from './components/PackingList'
-import ShoppingGaps from './components/ShoppingGaps'
-import Insights from './components/Insights'
+import WearReminder from './components/WearReminder'
+
+const ItemForm = lazy(() => import('./components/ItemForm'))
+const OutfitGenerator = lazy(() => import('./components/OutfitGenerator'))
+const SavedOutfits = lazy(() => import('./components/SavedOutfits'))
+const WearLog = lazy(() => import('./components/WearLog'))
+const PackingList = lazy(() => import('./components/PackingList'))
+const ShoppingGaps = lazy(() => import('./components/ShoppingGaps'))
+const Insights = lazy(() => import('./components/Insights'))
+const Settings = lazy(() => import('./components/Settings'))
+
+function TabLoading() {
+  return <div className="loading-row"><span className="spinner" /> Loading…</div>
+}
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -62,10 +70,10 @@ export default function App() {
   function onSaved() { setShowForm(false); setEditing(null); load() }
 
   if (!authReady) return null
-  if (recovery) return <ResetPassword onDone={() => setRecovery(false)} />
-  if (!session) return <Auth />
 
   return (
+    <SettingsProvider userId={session?.user?.id ?? null}>
+      {recovery ? <ResetPassword onDone={() => setRecovery(false)} /> : !session ? <Auth /> : (
     <div className="app">
       <header className="masthead">
         <div>
@@ -92,6 +100,8 @@ export default function App() {
 
       {tab === 'wardrobe' && (
         <>
+          {!loadError && <WearReminder items={items} />}
+
           <div className="toolbar">
             <button className="btn" style={{ marginLeft: 'auto' }} onClick={openAdd}>+ Add piece</button>
           </div>
@@ -115,14 +125,18 @@ export default function App() {
               <button className="btn ghost" onClick={load}>Retry</button>
             </div>
           ) : (
-            <OutfitGenerator items={items} userId={session.user.id} />
+            <Suspense fallback={<TabLoading />}>
+              <OutfitGenerator items={items} userId={session.user.id} />
+            </Suspense>
           )}
         </div>
       )}
 
       {tab === 'saved' && (
         <div className="narrow">
-          <SavedOutfits items={items} />
+          <Suspense fallback={<TabLoading />}>
+            <SavedOutfits items={items} />
+          </Suspense>
         </div>
       )}
 
@@ -151,29 +165,40 @@ export default function App() {
                 <span className="choice-title">Log</span>
                 <span className="choice-sub">Record what you wore and browse history.</span>
               </button>
+              <button className="more-card" onClick={() => setMoreTab('settings')}>
+                <span className="choice-title">Settings</span>
+                <span className="choice-sub">Currency, theme, AI features, and your data.</span>
+              </button>
             </div>
           ) : (
             <>
               <button className="more-back" onClick={() => setMoreTab(null)}>&larr; More</button>
-              {moreTab === 'packing' && <PackingList items={items} />}
-              {moreTab === 'insights' && <Insights items={items} />}
-              {moreTab === 'shopping' && <ShoppingGaps items={items} />}
-              {moreTab === 'log' && <WearLog items={items} userId={session.user.id} onChanged={load} />}
+              <Suspense fallback={<TabLoading />}>
+                {moreTab === 'packing' && <PackingList items={items} />}
+                {moreTab === 'insights' && <Insights items={items} />}
+                {moreTab === 'shopping' && <ShoppingGaps items={items} />}
+                {moreTab === 'log' && <WearLog items={items} userId={session.user.id} onChanged={load} />}
+                {moreTab === 'settings' && <Settings items={items} userId={session.user.id} onDataChanged={load} />}
+              </Suspense>
             </>
           )}
         </div>
       )}
 
       {showForm && (
-        <ItemForm
-          item={editing}
-          userId={session.user.id}
-          allTags={allTags}
-          items={items}
-          onClose={() => { setShowForm(false); setEditing(null) }}
-          onSaved={onSaved}
-        />
+        <Suspense fallback={null}>
+          <ItemForm
+            item={editing}
+            userId={session.user.id}
+            allTags={allTags}
+            items={items}
+            onClose={() => { setShowForm(false); setEditing(null) }}
+            onSaved={onSaved}
+          />
+        </Suspense>
       )}
     </div>
+      )}
+    </SettingsProvider>
   )
 }

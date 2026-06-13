@@ -1,9 +1,14 @@
 import { useState } from 'react'
+import { useSettings } from '../lib/settings'
+import AiDisabledNotice from './AiDisabledNotice'
 
 export default function ShoppingGaps({ items }) {
+  const { settings } = useSettings()
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  if (!settings.ai_shopping_gaps) return <AiDisabledNotice feature="Shopping gap suggestions" />
 
   async function generate() {
     setBusy(true); setError(''); setResult(null)

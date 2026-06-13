@@ -4,10 +4,13 @@ import { useToast } from '../lib/toast.jsx'
 import { resolveSlots } from '../lib/slots'
 import { useSlotCarousels } from '../lib/useSlotCarousels'
 import { useEscClose } from '../lib/useEscClose'
+import { useSettings } from '../lib/settings'
 import SlotCarousels from './SlotCarousels'
+import AiDisabledNotice from './AiDisabledNotice'
 
 export default function FindPairings({ item, items, userId, onClose }) {
   const showToast = useToast()
+  const { settings } = useSettings()
   const [busy, setBusy] = useState(true)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -20,6 +23,7 @@ export default function FindPairings({ item, items, userId, onClose }) {
   const slots = resolveSlots(result?.slots, items)
 
   useEffect(() => {
+    if (!settings.ai_pairings) { setBusy(false); return }
     let cancelled = false
     async function run() {
       setBusy(true); setError(''); setResult(null); setSaved(false)
@@ -74,6 +78,19 @@ export default function FindPairings({ item, items, userId, onClose }) {
     }
     setSaved(true)
     showToast('Outfit saved.')
+  }
+
+  if (!settings.ai_pairings) {
+    return (
+      <div className="scrim" onClick={onClose}>
+        <div className="sheet" onClick={e => e.stopPropagation()}>
+          <AiDisabledNotice feature="Find pairings" />
+          <div className="sheet-actions">
+            <button type="button" className="btn ghost" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

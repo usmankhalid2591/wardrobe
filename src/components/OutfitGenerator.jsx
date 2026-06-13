@@ -4,7 +4,9 @@ import { useToast } from '../lib/toast.jsx'
 import { resolveSlots } from '../lib/slots'
 import { useSlotCarousels } from '../lib/useSlotCarousels'
 import { getWeather } from '../lib/weather'
+import { useSettings } from '../lib/settings'
 import SlotCarousels from './SlotCarousels'
+import AiDisabledNotice from './AiDisabledNotice'
 
 const SUGGESTIONS = [
   'Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner',
@@ -14,6 +16,7 @@ const SUGGESTIONS = [
 
 export default function OutfitGenerator({ items, userId }) {
   const showToast = useToast()
+  const { settings } = useSettings()
   const [occasion, setOccasion] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
@@ -31,6 +34,8 @@ export default function OutfitGenerator({ items, userId }) {
   useEffect(() => {
     getWeather().then(setWeather)
   }, [])
+
+  if (!settings.ai_stylist) return <AiDisabledNotice feature="The stylist" />
 
   async function generate(occ, opts = {}) {
     const { surprise = false } = opts

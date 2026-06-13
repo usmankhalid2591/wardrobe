@@ -2,7 +2,8 @@ import { useState } from 'react'
 import CategoryIcon from '../lib/categoryIcon'
 import { STATUS_ORDER, statusInfo } from '../lib/status'
 import { useEscClose } from '../lib/useEscClose'
-import { formatRs, costPerWear } from '../lib/currency'
+import { formatCurrency, costPerWear } from '../lib/currency'
+import { useSettings } from '../lib/settings'
 
 const STATUS_ACTION_LABEL = {
   ready: 'Mark ready',
@@ -23,6 +24,7 @@ function formatLastWorn(dateStr) {
 
 export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, wearing, onStatus, settingStatus, onStorage, settingStorage, onPairings }) {
   const [lightbox, setLightbox] = useState(false)
+  const { settings } = useSettings()
 
   useEscClose(() => (lightbox ? setLightbox(false) : onClose()))
 
@@ -53,9 +55,9 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
 
           {item.price != null && item.price !== '' && (
             <div className="card-meta cost-meta">
-              {formatRs(item.price)}
+              {formatCurrency(item.price, settings.currency)}
               {cpw != null
-                ? <><span className="dot">·</span>{formatRs(cpw)} per wear</>
+                ? <><span className="dot">·</span>{formatCurrency(cpw, settings.currency)} per wear</>
                 : <><span className="dot">·</span>not worn yet</>}
             </div>
           )}

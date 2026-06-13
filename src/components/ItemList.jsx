@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react'
 import { supabase } from '../lib/supabase'
 import CategoryIcon from '../lib/categoryIcon'
 import { useToast } from '../lib/toast.jsx'
 import { statusInfo } from '../lib/status'
 import ItemDetail from './ItemDetail'
 import ConfirmDialog from './ConfirmDialog'
-import FindPairings from './FindPairings'
+
+const FindPairings = lazy(() => import('./FindPairings'))
 
 function storagePathFromUrl(url) {
   const marker = '/item-photos/'
@@ -241,7 +242,9 @@ export default function ItemList({ items, loading, onEdit, onChanged, userId }) 
       )}
 
       {pairingsFor && (
-        <FindPairings item={pairingsFor} items={items} userId={userId} onClose={() => setPairingsFor(null)} />
+        <Suspense fallback={null}>
+          <FindPairings item={pairingsFor} items={items} userId={userId} onClose={() => setPairingsFor(null)} />
+        </Suspense>
       )}
 
       {confirming && (

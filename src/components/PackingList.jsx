@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { resolveSlots } from '../lib/slots'
 import { useSlotCarousels } from '../lib/useSlotCarousels'
+import { useSettings } from '../lib/settings'
 import SlotCarousels from './SlotCarousels'
+import AiDisabledNotice from './AiDisabledNotice'
 
 function DayPlan({ day, items }) {
   const { selections, trackRefs, handleScroll, selectItem } = useSlotCarousels()
@@ -19,11 +21,14 @@ function DayPlan({ day, items }) {
 }
 
 export default function PackingList({ items }) {
+  const { settings } = useSettings()
   const [destination, setDestination] = useState('')
   const [days, setDays] = useState(3)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  if (!settings.ai_packing) return <AiDisabledNotice feature="Packing list generator" />
 
   const readyItems = items.filter(it => (it.status || 'ready') === 'ready' && !it.in_storage)
 
