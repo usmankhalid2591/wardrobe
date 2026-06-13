@@ -45,13 +45,24 @@ Use the item names exactly as written.
 WARDROBE:
 ${inventory}
 
-Build one cohesive outfit. Consider color harmony, formality, material and the weather/setting \
-implied by the occasion. Choose a top, bottom, footwear, and layering/accessories where appropriate.
+Decide which 3-5 clothing slots/roles are needed for this occasion (e.g. "Trousers", "Shirt", \
+"Outerwear", "Footwear", "Accessory" — pick roles that fit the occasion and skip roles that \
+don't apply, e.g. no outerwear for a hot casual day).
+
+For each slot, list every wardrobe item that would be a good fit, ordered with the single \
+best choice first, then good alternatives in descending order of fit. Include at least 1 and \
+at most 6 items per slot. Consider color harmony, formality, material and the weather/setting \
+implied by the occasion.
 
 Respond with ONLY valid JSON, no markdown, no backticks, in this exact shape:
 {
-  "pieces": [
-    { "role": "Shirt", "item": "<exact name from wardrobe>", "why": "<one short sentence>" }
+  "slots": [
+    {
+      "role": "<slot name, e.g. Trousers>",
+      "items": [
+        { "item": "<exact name from wardrobe>", "why": "<one short sentence on why this works>" }
+      ]
+    }
   ],
   "note": "<one sentence on why the overall look works for the occasion>"
 }`

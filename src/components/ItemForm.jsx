@@ -17,7 +17,8 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [identifying, setIdentifying] = useState(false)
-  const [suggestions, setSuggestions] = useState(null)
+  // 'choice' (new items only) -> 'ai-photo' -> 'form', or straight to 'form'
+  const [mode, setMode] = useState(item ? 'form' : 'choice')
   const identifyId = useRef(0)
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
@@ -27,12 +28,14 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
     if (!f) return
     setFile(f)
     setPreview(URL.createObjectURL(f))
-    setSuggestions(null)
-    identify(f)
   }
 
-  async function identify(f) {
+  async function pickAiPhoto(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
     const id = ++identifyId.current
+    setFile(f)
+    setPreview(URL.createObjectURL(f))
     setIdentifying(true)
     try {
       const small = await compressImage(f, { maxDim: 768, quality: 0.7 })
@@ -43,36 +46,28 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
         body: JSON.stringify({ image: dataUrl, mimeType: small.type || 'image/jpeg' }),
       })
       if (id !== identifyId.current) return
-      if (!res.ok) return
-      const data = await res.json()
-      if (data.category || data.color || data.material) {
-        setSuggestions(data)
+      if (res.ok) {
+        const data = await res.json()
+        setForm(f0 => {
+          const tags = data.category && !f0.tags.includes(data.category)
+            ? [...f0.tags, data.category]
+            : f0.tags
+          return {
+            ...f0,
+            color: data.color || f0.color,
+            material: data.material || f0.material,
+            tags,
+          }
+        })
       }
     } catch {
-      // Identification is a nice-to-have — fail silently.
+      // Identification is a nice-to-have — fall through to the form either way.
     } finally {
-      if (id === identifyId.current) setIdentifying(false)
+      if (id === identifyId.current) {
+        setIdentifying(false)
+        setMode('form')
+      }
     }
-  }
-
-  function acceptCategory() {
-    if (!suggestions?.category) return
-    if (!form.tags.includes(suggestions.category)) {
-      set('tags', [...form.tags, suggestions.category])
-    }
-    setSuggestions(s => ({ ...s, category: '' }))
-  }
-
-  function acceptColor() {
-    if (!suggestions?.color) return
-    set('color', suggestions.color)
-    setSuggestions(s => ({ ...s, color: '' }))
-  }
-
-  function acceptMaterial() {
-    if (!suggestions?.material) return
-    set('material', suggestions.material)
-    setSuggestions(s => ({ ...s, material: '' }))
   }
 
   useEscClose(onClose, !busy)
@@ -119,6 +114,54 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
     }
   }
 
+  if (mode === 'choice') {
+    return (
+      <div className="scrim" onClick={onClose}>
+        <div className="sheet" onClick={e => e.stopPropagation()}>
+          <h2>Add a piece</h2>
+          <p className="hint">How would you like to add this?</p>
+          <div className="add-choice">
+            <button type="button" className="choice-btn" onClick={() => setMode('ai-photo')}>
+              <span className="choice-title">Take a photo — let AI fill it in</span>
+              <span className="choice-sub">Snap or choose a photo and I'll suggest the color, material, and category. You'll review everything before saving.</span>
+            </button>
+            <button type="button" className="choice-btn" onClick={() => setMode('form')}>
+              <span className="choice-title">Enter details manually</span>
+              <span className="choice-sub">Fill in the details yourself, and add a photo if you'd like.</span>
+            </button>
+          </div>
+          <div className="sheet-actions">
+            <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (mode === 'ai-photo') {
+    return (
+      <div className="scrim" onClick={onClose}>
+        <div className="sheet" onClick={e => e.stopPropagation()}>
+          <h2>Take a photo</h2>
+          <p className="hint">I'll suggest the color, material, and category from the photo — you can review and edit everything on the next screen.</p>
+          <div className="photo-input">
+            <div className="photo-preview" style={preview ? { backgroundImage: `url(${preview})` } : {}} />
+            <input type="file" accept="image/*" onChange={pickAiPhoto} disabled={identifying} />
+          </div>
+          {identifying && (
+            <div className="ai-identifying"><span className="spinner" /> Identifying…</div>
+          )}
+          <div className="sheet-actions">
+            <button type="button" className="btn ghost" onClick={onClose} disabled={identifying}>Cancel</button>
+            <button type="button" className="btn ghost" onClick={() => setMode('form')} disabled={identifying}>
+              Skip, enter manually
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="scrim" onClick={onClose}>
       <div className="sheet" onClick={e => e.stopPropagation()}>
@@ -160,32 +203,6 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
               <input type="file" accept="image/*" onChange={pickFile} />
             </div>
             <div className="hint">Large photos are resized automatically before upload.</div>
-
-            {identifying && (
-              <div className="ai-identifying"><span className="spinner" /> Identifying…</div>
-            )}
-            {suggestions && (suggestions.category || suggestions.color || suggestions.material) && (
-              <div className="ai-suggestions">
-                <div className="ai-suggestions-label">Suggested — tap to apply</div>
-                <div className="chips">
-                  {suggestions.category && (
-                    <button type="button" className="chip" onClick={acceptCategory}>
-                      + {suggestions.category}
-                    </button>
-                  )}
-                  {suggestions.color && (
-                    <button type="button" className="chip" onClick={acceptColor}>
-                      Color: {suggestions.color}
-                    </button>
-                  )}
-                  {suggestions.material && (
-                    <button type="button" className="chip" onClick={acceptMaterial}>
-                      Material: {suggestions.material}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
           <div className="sheet-actions">
             <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>

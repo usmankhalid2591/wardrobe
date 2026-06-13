@@ -365,15 +365,23 @@ input, textarea, select { font-family: var(--font-mono); }
   margin-top: 10px;
 }
 .ai-identifying .spinner { width: 14px; height: 14px; border-width: 2px; }
-.ai-suggestions { margin-top: 10px; }
-.ai-suggestions-label {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 6px;
+
+/* ---------- Add-piece choice screen ---------- */
+.add-choice { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 4px; }
+.choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid var(--paper-line);
+  border-radius: 3px;
+  background: var(--paper-raised);
 }
-.ai-suggestions .chips { margin-bottom: 0; }
+.choice-btn:hover, .choice-btn:focus-visible { border-color: var(--oxblood); outline: none; }
+.choice-title { font-family: var(--font-display); font-size: 17px; font-weight: 500; color: var(--ink); }
+.choice-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
 
 .sheet-actions { display: flex; gap: 10px; margin-top: 22px; }
 .sheet-actions .btn { flex: 1; }
@@ -613,6 +621,75 @@ input, textarea, select { font-family: var(--font-mono); }
   margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ink);
   font-family: var(--font-display); font-size: 15px; font-style: italic; line-height: 1.5; color: var(--ink-soft);
 }
+
+/* ---------- Stylist: outfit summary ---------- */
+.outfit-summary {
+  margin-bottom: 18px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ink);
+}
+.outfit-summary-item { padding: 10px 0; border-bottom: 1px dotted var(--paper-line); }
+.outfit-summary-item:last-child { border-bottom: none; }
+.outfit-summary-role { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.outfit-summary-item .item { font-family: var(--font-display); font-size: 18px; font-weight: 500; margin: 2px 0 4px; }
+.outfit-summary-item .why { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+
+/* ---------- Stylist: pick carousels ---------- */
+.carousel-row { margin-bottom: 16px; }
+.carousel-row:last-of-type { margin-bottom: 0; }
+.carousel-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.carousel-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px calc(50% - 42px);
+  scrollbar-width: none;
+}
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-item {
+  flex: 0 0 84px;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+.carousel-item.selected { opacity: 1; }
+.carousel-item-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 3px;
+  border: 1px solid var(--paper-line);
+  background: var(--paper);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.carousel-item.selected .carousel-item-photo { border-color: var(--oxblood); border-width: 2px; }
+.carousel-item-photo .tile-icon { width: 55%; height: 55%; color: var(--paper-line); }
+.carousel-item-name {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.carousel-item.selected .carousel-item-name { color: var(--ink); font-weight: 500; }
 
 /* ---------- Saved outfits ---------- */
 .saved-list { display: flex; flex-direction: column; gap: 14px; }

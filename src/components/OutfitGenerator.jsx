@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../lib/toast.jsx'
 import CategoryIcon from '../lib/categoryIcon'
 
 const SUGGESTIONS = ['Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner']
+
+const ITEM_W = 84
+const GAP = 10
+const STEP = ITEM_W + GAP
 
 function findItem(items, name) {
   if (!name) return null
@@ -22,13 +26,26 @@ export default function OutfitGenerator({ items, userId }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [selections, setSelections] = useState({})
+  const trackRefs = useRef({})
 
   const readyItems = items.filter(it => (it.status || 'ready') === 'ready')
+
+  // Resolve AI slot/item names to actual wardrobe items, dropping anything
+  // that doesn't match and any slot left with no matches.
+  const slots = (result?.slots || [])
+    .map(slot => ({
+      role: slot.role,
+      items: (slot.items || [])
+        .map(p => ({ ...p, match: findItem(items, p.item) }))
+        .filter(p => p.match),
+    }))
+    .filter(slot => slot.items.length > 0)
 
   async function generate(occ) {
     const text = (occ ?? occasion).trim()
     if (!text) return
-    setBusy(true); setError(''); setResult(null); setSaved(false)
+    setBusy(true); setError(''); setResult(null); setSaved(false); setSelections({})
     try {
       const wardrobe = readyItems.map(it => ({
         name: it.name, brand: it.brand, color: it.color,
@@ -52,13 +69,40 @@ export default function OutfitGenerator({ items, userId }) {
     }
   }
 
+  function handleScroll(slotIndex, maxIndex) {
+    return e => {
+      const el = e.currentTarget
+      clearTimeout(el._scrollTimer)
+      el._scrollTimer = setTimeout(() => {
+        let idx = Math.round(el.scrollLeft / STEP)
+        idx = Math.max(0, Math.min(maxIndex, idx))
+        setSelections(s => (s[slotIndex] === idx ? s : { ...s, [slotIndex]: idx }))
+      }, 100)
+    }
+  }
+
+  function selectItem(slotIndex, itemIndex) {
+    const track = trackRefs.current[slotIndex]
+    if (track) track.scrollTo({ left: itemIndex * STEP, behavior: 'smooth' })
+    setSelections(s => ({ ...s, [slotIndex]: itemIndex }))
+  }
+
+  function chosenPiece(slot, slotIndex) {
+    const idx = Math.min(selections[slotIndex] ?? 0, slot.items.length - 1)
+    return slot.items[idx]
+  }
+
   async function saveOutfit() {
-    if (!result) return
+    if (!slots.length) return
     setSaving(true)
+    const pieces = slots.map((slot, i) => {
+      const chosen = chosenPiece(slot, i)
+      return { role: slot.role, item: chosen.item, why: chosen.why }
+    })
     const { error } = await supabase.from('saved_outfits').insert({
       user_id: userId,
       occasion: result.occasion,
-      pieces: result.pieces || [],
+      pieces,
       note: result.note || '',
     })
     setSaving(false)
@@ -99,7 +143,11 @@ export default function OutfitGenerator({ items, userId }) {
       {busy && <div className="loading-row"><span className="spinner" /> Considering the occasion…</div>}
       {error && <div className="notice err">{error}</div>}
 
-      {result && (
+      {result && slots.length === 0 && (
+        <div className="empty"><h3>Couldn't match an outfit</h3><p>Try a different occasion or add more pieces to your wardrobe.</p></div>
+      )}
+
+      {result && slots.length > 0 && (
         <div className="outfit">
           <div className="outfit-head">
             <div className="occasion">{result.occasion}</div>
@@ -107,22 +155,48 @@ export default function OutfitGenerator({ items, userId }) {
               {saved ? 'Saved ✓' : saving ? 'Saving…' : 'Save outfit'}
             </button>
           </div>
-          {(result.pieces || []).map((p, i) => {
-            const match = findItem(items, p.item)
-            return (
-              <div className="outfit-piece" key={i}>
-                <div className="outfit-piece-photo"
-                  style={match?.photo_url ? { backgroundImage: `url(${match.photo_url})` } : {}}>
-                  {!match?.photo_url && <CategoryIcon tags={match?.tags} className="tile-icon" />}
+
+          <div className="outfit-summary">
+            {slots.map((slot, i) => {
+              const chosen = chosenPiece(slot, i)
+              return (
+                <div className="outfit-summary-item" key={i}>
+                  <div className="outfit-summary-role">{slot.role}</div>
+                  <div className="item">{chosen.match?.name || chosen.item}</div>
+                  {chosen.why && <div className="why">{chosen.why}</div>}
                 </div>
-                <div className="outfit-piece-body">
-                  <div className="role">{p.role}</div>
-                  <div className="item">{p.item}</div>
-                  <div className="why">{p.why}</div>
+              )
+            })}
+          </div>
+
+          {slots.map((slot, i) => {
+            const idx = Math.min(selections[i] ?? 0, slot.items.length - 1)
+            return (
+              <div className="carousel-row" key={i}>
+                <div className="carousel-label">{slot.role}</div>
+                <div
+                  className="carousel-track"
+                  ref={el => { trackRefs.current[i] = el }}
+                  onScroll={handleScroll(i, slot.items.length - 1)}
+                >
+                  {slot.items.map((p, j) => (
+                    <div
+                      className={`carousel-item${j === idx ? ' selected' : ''}`}
+                      key={j}
+                      onClick={() => selectItem(i, j)}
+                    >
+                      <div className="carousel-item-photo"
+                        style={p.match?.photo_url ? { backgroundImage: `url(${p.match.photo_url})` } : {}}>
+                        {!p.match?.photo_url && <CategoryIcon tags={p.match?.tags} className="tile-icon" />}
+                      </div>
+                      <div className="carousel-item-name">{p.match?.name || p.item}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )
           })}
+
           {result.note && <div className="outfit-note">{result.note}</div>}
         </div>
       )}
