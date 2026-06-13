@@ -365,6 +365,16 @@ input, textarea, select { font-family: var(--font-mono); }
   margin-top: 10px;
 }
 .ai-identifying .spinner { width: 14px; height: 14px; border-width: 2px; }
+.photo-alt-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--oxblood);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.photo-alt-link input { display: none; }
 
 /* ---------- Add-piece choice screen ---------- */
 .add-choice { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 4px; }
@@ -622,18 +632,6 @@ input, textarea, select { font-family: var(--font-mono); }
   font-family: var(--font-display); font-size: 15px; font-style: italic; line-height: 1.5; color: var(--ink-soft);
 }
 
-/* ---------- Stylist: outfit summary ---------- */
-.outfit-summary {
-  margin-bottom: 18px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--ink);
-}
-.outfit-summary-item { padding: 10px 0; border-bottom: 1px dotted var(--paper-line); }
-.outfit-summary-item:last-child { border-bottom: none; }
-.outfit-summary-role { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.outfit-summary-item .item { font-family: var(--font-display); font-size: 18px; font-weight: 500; margin: 2px 0 4px; }
-.outfit-summary-item .why { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
-
 /* ---------- Stylist: pick carousels ---------- */
 .carousel-row { margin-bottom: 16px; }
 .carousel-row:last-of-type { margin-bottom: 0; }
@@ -690,6 +688,21 @@ input, textarea, select { font-family: var(--font-mono); }
   overflow: hidden;
 }
 .carousel-item.selected .carousel-item-name { color: var(--ink); font-weight: 500; }
+.carousel-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 10px;
+  color: var(--ink);
+}
+.carousel-why {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  text-align: center;
+  margin-top: 4px;
+}
 
 /* ---------- Saved outfits ---------- */
 .saved-list { display: flex; flex-direction: column; gap: 14px; }

@@ -146,8 +146,12 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
           <p className="hint">I'll suggest the color, material, and category from the photo — you can review and edit everything on the next screen.</p>
           <div className="photo-input">
             <div className="photo-preview" style={preview ? { backgroundImage: `url(${preview})` } : {}} />
-            <input type="file" accept="image/*" onChange={pickAiPhoto} disabled={identifying} />
+            <input type="file" accept="image/*" capture="environment" onChange={pickAiPhoto} disabled={identifying} />
           </div>
+          <label className="photo-alt-link">
+            or choose an existing photo
+            <input type="file" accept="image/*" onChange={pickAiPhoto} disabled={identifying} />
+          </label>
           {identifying && (
             <div className="ai-identifying"><span className="spinner" /> Identifying…</div>
           )}

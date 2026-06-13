@@ -156,21 +156,9 @@ export default function OutfitGenerator({ items, userId }) {
             </button>
           </div>
 
-          <div className="outfit-summary">
-            {slots.map((slot, i) => {
-              const chosen = chosenPiece(slot, i)
-              return (
-                <div className="outfit-summary-item" key={i}>
-                  <div className="outfit-summary-role">{slot.role}</div>
-                  <div className="item">{chosen.match?.name || chosen.item}</div>
-                  {chosen.why && <div className="why">{chosen.why}</div>}
-                </div>
-              )
-            })}
-          </div>
-
           {slots.map((slot, i) => {
             const idx = Math.min(selections[i] ?? 0, slot.items.length - 1)
+            const chosen = slot.items[idx]
             return (
               <div className="carousel-row" key={i}>
                 <div className="carousel-label">{slot.role}</div>
@@ -193,6 +181,8 @@ export default function OutfitGenerator({ items, userId }) {
                     </div>
                   ))}
                 </div>
+                <div className="carousel-name">{chosen.match?.name || chosen.item}</div>
+                {chosen.why && <div className="carousel-why">{chosen.why}</div>}
               </div>
             )
           })}
