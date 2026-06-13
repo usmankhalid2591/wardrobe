@@ -1,6 +1,16 @@
 import { useState } from 'react'
+import CategoryIcon from '../lib/categoryIcon'
 
 const SUGGESTIONS = ['Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner']
+
+function findItem(items, name) {
+  if (!name) return null
+  const norm = s => s.trim().toLowerCase()
+  const target = norm(name)
+  return items.find(it => norm(it.name) === target)
+    || items.find(it => norm(it.name).includes(target) || target.includes(norm(it.name)))
+    || null
+}
 
 export default function OutfitGenerator({ items }) {
   const [occasion, setOccasion] = useState('')
@@ -64,13 +74,22 @@ export default function OutfitGenerator({ items }) {
       {result && (
         <div className="outfit">
           <div className="occasion">{result.occasion}</div>
-          {(result.pieces || []).map((p, i) => (
-            <div className="outfit-piece" key={i}>
-              <div className="role">{p.role}</div>
-              <div className="item">{p.item}</div>
-              <div className="why">{p.why}</div>
-            </div>
-          ))}
+          {(result.pieces || []).map((p, i) => {
+            const match = findItem(items, p.item)
+            return (
+              <div className="outfit-piece" key={i}>
+                <div className="outfit-piece-photo"
+                  style={match?.photo_url ? { backgroundImage: `url(${match.photo_url})` } : {}}>
+                  {!match?.photo_url && <CategoryIcon tags={match?.tags} className="tile-icon" />}
+                </div>
+                <div className="outfit-piece-body">
+                  <div className="role">{p.role}</div>
+                  <div className="item">{p.item}</div>
+                  <div className="why">{p.why}</div>
+                </div>
+              </div>
+            )
+          })}
           {result.note && <div className="outfit-note">{result.note}</div>}
         </div>
       )}

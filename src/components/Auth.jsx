@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Auth() {
-  const [mode, setMode] = useState('signin')
+  const [mode, setMode] = useState('signin') // signin | signup | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -16,11 +16,17 @@ export default function Auth() {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-      } else {
+      } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         setOk('Account created. You can sign in now.')
         setMode('signin')
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        })
+        if (error) throw error
+        setOk('If that email is registered, a reset link is on its way. Check your inbox.')
       }
     } catch (err) {
       setError(err.message || 'Something went wrong.')
@@ -44,21 +50,29 @@ export default function Auth() {
             <input type="email" required value={email}
               onChange={e => setEmail(e.target.value)} autoComplete="email" />
           </div>
-          <div className="field">
-            <label>Password</label>
-            <input type="password" required minLength={6} value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
-          </div>
+          {mode !== 'forgot' && (
+            <div className="field">
+              <label>Password</label>
+              <input type="password" required minLength={6} value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+            </div>
+          )}
           <button className="btn" style={{ width: '100%' }} disabled={busy}>
-            {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
           </button>
         </form>
+
+        {mode === 'signin' && (
+          <div className="auth-toggle">
+            <button onClick={() => { setMode('forgot'); setError(''); setOk('') }}>Forgot password?</button>
+          </div>
+        )}
+
         <div className="auth-toggle">
-          {mode === 'signin' ? "No account yet? " : 'Already enrolled? '}
-          <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setOk('') }}>
-            {mode === 'signin' ? 'Create one' : 'Sign in'}
-          </button>
+          {mode === 'signin' && <>No account yet? <button onClick={() => { setMode('signup'); setError(''); setOk('') }}>Create one</button></>}
+          {mode === 'signup' && <>Already enrolled? <button onClick={() => { setMode('signin'); setError(''); setOk('') }}>Sign in</button></>}
+          {mode === 'forgot' && <>Remembered it? <button onClick={() => { setMode('signin'); setError(''); setOk('') }}>Sign in</button></>}
         </div>
       </div>
     </div>

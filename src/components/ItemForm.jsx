@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { compressImage } from '../lib/compressImage'
+import TagInput from './TagInput'
 
-const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: '', photo_url: '' }
+const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '' }
 
-export default function ItemForm({ item, userId, onClose, onSaved }) {
+export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
   const [form, setForm] = useState(item
-    ? { ...item, tags: (item.tags || []).join(', ') }
+    ? { ...item, tags: item.tags || [] }
     : blank)
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(item?.photo_url || '')
@@ -27,16 +29,15 @@ export default function ItemForm({ item, userId, onClose, onSaved }) {
     try {
       let photo_url = form.photo_url || ''
       if (file) {
-        const ext = file.name.split('.').pop()
-        const path = `${userId}/${Date.now()}.${ext}`
+        const blob = await compressImage(file)
+        const path = `${userId}/${Date.now()}.jpg`
         const { error: upErr } = await supabase.storage
-          .from('item-photos').upload(path, file, { upsert: true })
+          .from('item-photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
         if (upErr) throw upErr
         const { data } = supabase.storage.from('item-photos').getPublicUrl(path)
         photo_url = data.publicUrl
       }
 
-      const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
       const payload = {
         user_id: userId,
         name: form.name.trim(),
@@ -44,7 +45,7 @@ export default function ItemForm({ item, userId, onClose, onSaved }) {
         color: form.color.trim(),
         material: form.material.trim(),
         notes: form.notes.trim(),
-        tags,
+        tags: form.tags,
         photo_url,
       }
 
@@ -89,9 +90,8 @@ export default function ItemForm({ item, userId, onClose, onSaved }) {
           </div>
           <div className="field">
             <label>Tags</label>
-            <input value={form.tags} onChange={e => set('tags', e.target.value)}
-              placeholder="casual, shirt, summer" />
-            <div className="hint">Comma-separated. Used by the stylist to find pieces.</div>
+            <TagInput value={form.tags} onChange={t => set('tags', t)} suggestions={allTags} />
+            <div className="hint">Press Enter or comma to add. Used for filters and the stylist.</div>
           </div>
           <div className="field">
             <label>Notes</label>
@@ -103,6 +103,7 @@ export default function ItemForm({ item, userId, onClose, onSaved }) {
               <div className="photo-preview" style={preview ? { backgroundImage: `url(${preview})` } : {}} />
               <input type="file" accept="image/*" onChange={pickFile} />
             </div>
+            <div className="hint">Large photos are resized automatically before upload.</div>
           </div>
           <div className="sheet-actions">
             <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
