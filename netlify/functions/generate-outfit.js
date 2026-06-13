@@ -1,7 +1,7 @@
 // Netlify Function: POST /.netlify/functions/generate-outfit
 // Keeps the Gemini API key server-side. Never exposed to the browser.
 
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-flash-latest'
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
