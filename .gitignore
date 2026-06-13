@@ -1,3 +1,5 @@
 node_modules/
 dist/
+dist_check/
+dist_check2/
 vite.config.js.timestamp-*.mjs

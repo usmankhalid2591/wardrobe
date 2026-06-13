@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import CategoryIcon from '../lib/categoryIcon'
+import { useToast } from '../lib/toast.jsx'
+import { statusInfo } from '../lib/status'
 import ItemDetail from './ItemDetail'
 import ConfirmDialog from './ConfirmDialog'
 
@@ -11,12 +13,15 @@ function storagePathFromUrl(url) {
 }
 
 export default function ItemList({ items, loading, onEdit, onChanged }) {
+  const showToast = useToast()
   const [q, setQ] = useState('')
   const [activeTags, setActiveTags] = useState([])
   const [sort, setSort] = useState('newest')
   const [selected, setSelected] = useState(null)
   const [confirming, setConfirming] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [wearing, setWearing] = useState(false)
+  const [settingStatus, setSettingStatus] = useState(false)
 
   const allTags = useMemo(() => {
     const set = new Set()
@@ -67,6 +72,38 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
     setConfirming(it)
   }
 
+  async function markWorn(it) {
+    setWearing(true)
+    const now = new Date().toISOString()
+    const nextCount = (it.wear_count || 0) + 1
+    const { error } = await supabase.from('items')
+      .update({ last_worn_at: now, wear_count: nextCount })
+      .eq('id', it.id)
+    setWearing(false)
+    if (error) {
+      showToast(error.message || 'Could not log wear.', 'err')
+      return
+    }
+    setSelected(s => s && s.id === it.id ? { ...s, last_worn_at: now, wear_count: nextCount } : s)
+    showToast('Logged as worn today.')
+    onChanged()
+  }
+
+  async function updateStatus(it, status) {
+    setSettingStatus(true)
+    const { error } = await supabase.from('items')
+      .update({ status })
+      .eq('id', it.id)
+    setSettingStatus(false)
+    if (error) {
+      showToast(error.message || 'Could not update status.', 'err')
+      return
+    }
+    setSelected(s => s && s.id === it.id ? { ...s, status } : s)
+    showToast(`Marked as ${statusInfo(status).short.toLowerCase()}.`)
+    onChanged()
+  }
+
   async function confirmDelete() {
     if (!confirming) return
     setDeleting(true)
@@ -82,6 +119,7 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
     }
     setDeleting(false)
     setConfirming(null)
+    showToast('Piece deleted.')
     onChanged()
   }
 
@@ -130,6 +168,9 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
               <div className="tile-photo"
                 style={it.photo_url ? { backgroundImage: `url(${it.photo_url})` } : {}}>
                 {!it.photo_url && <CategoryIcon tags={it.tags} className="tile-icon" />}
+                {it.status && it.status !== 'ready' && (
+                  <span className={`tile-status status-${it.status}`}>{statusInfo(it.status).short}</span>
+                )}
               </div>
               <div className="tile-label">
                 <div className="tile-name">{it.name}</div>
@@ -143,7 +184,8 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
       )}
 
       {selected && (
-        <ItemDetail item={selected} onClose={closeDetail} onEdit={startEdit} onDelete={startDelete} />
+        <ItemDetail item={selected} onClose={closeDetail} onEdit={startEdit} onDelete={startDelete}
+          onWear={markWorn} wearing={wearing} onStatus={updateStatus} settingStatus={settingStatus} />
       )}
 
       {confirming && (

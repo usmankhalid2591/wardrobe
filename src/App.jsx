@@ -5,6 +5,7 @@ import ResetPassword from './components/ResetPassword'
 import ItemList from './components/ItemList'
 import ItemForm from './components/ItemForm'
 import OutfitGenerator from './components/OutfitGenerator'
+import SavedOutfits from './components/SavedOutfits'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -76,6 +77,9 @@ export default function App() {
         <button className={`tab ${tab === 'stylist' ? 'active' : ''}`} onClick={() => setTab('stylist')}>
           Stylist
         </button>
+        <button className={`tab ${tab === 'saved' ? 'active' : ''}`} onClick={() => setTab('saved')}>
+          Saved
+        </button>
       </nav>
 
       {tab === 'wardrobe' && (
@@ -103,8 +107,14 @@ export default function App() {
               <button className="btn ghost" onClick={load}>Retry</button>
             </div>
           ) : (
-            <OutfitGenerator items={items} />
+            <OutfitGenerator items={items} userId={session.user.id} />
           )}
+        </div>
+      )}
+
+      {tab === 'saved' && (
+        <div className="narrow">
+          <SavedOutfits items={items} />
         </div>
       )}
 

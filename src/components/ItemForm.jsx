@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/compressImage'
+import { useToast } from '../lib/toast.jsx'
 import TagInput from './TagInput'
 
 const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '' }
 
 export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
+  const showToast = useToast()
   const [form, setForm] = useState(item
     ? { ...item, tags: item.tags || [] }
     : blank)
@@ -52,9 +54,11 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
       if (item?.id) {
         const { error } = await supabase.from('items').update(payload).eq('id', item.id)
         if (error) throw error
+        showToast('Piece updated.')
       } else {
         const { error } = await supabase.from('items').insert(payload)
         if (error) throw error
+        showToast('Piece added.')
       }
       onSaved()
     } catch (err) {
