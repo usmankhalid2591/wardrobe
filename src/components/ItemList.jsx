@@ -5,6 +5,7 @@ import { useToast } from '../lib/toast.jsx'
 import { statusInfo } from '../lib/status'
 import ItemDetail from './ItemDetail'
 import ConfirmDialog from './ConfirmDialog'
+import FindPairings from './FindPairings'
 
 function storagePathFromUrl(url) {
   const marker = '/item-photos/'
@@ -12,16 +13,18 @@ function storagePathFromUrl(url) {
   return idx === -1 ? null : url.slice(idx + marker.length)
 }
 
-export default function ItemList({ items, loading, onEdit, onChanged }) {
+export default function ItemList({ items, loading, onEdit, onChanged, userId }) {
   const showToast = useToast()
   const [q, setQ] = useState('')
   const [activeTags, setActiveTags] = useState([])
   const [sort, setSort] = useState('newest')
   const [selected, setSelected] = useState(null)
+  const [pairingsFor, setPairingsFor] = useState(null)
   const [confirming, setConfirming] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [wearing, setWearing] = useState(false)
   const [settingStatus, setSettingStatus] = useState(false)
+  const [settingStorage, setSettingStorage] = useState(false)
   const searchRef = useRef(null)
 
   useEffect(() => {
@@ -80,6 +83,11 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
     onEdit(it)
   }
 
+  function openPairings(it) {
+    setSelected(null)
+    setPairingsFor(it)
+  }
+
   function startDelete(it) {
     setSelected(null)
     setConfirming(it)
@@ -114,6 +122,21 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
     }
     setSelected(s => s && s.id === it.id ? { ...s, status } : s)
     showToast(`Marked as ${statusInfo(status).short.toLowerCase()}.`)
+    onChanged()
+  }
+
+  async function updateStorage(it, in_storage) {
+    setSettingStorage(true)
+    const { error } = await supabase.from('items')
+      .update({ in_storage })
+      .eq('id', it.id)
+    setSettingStorage(false)
+    if (error) {
+      showToast(error.message || 'Could not update storage.', 'err')
+      return
+    }
+    setSelected(s => s && s.id === it.id ? { ...s, in_storage } : s)
+    showToast(in_storage ? 'Moved to storage.' : 'Taken out of storage.')
     onChanged()
   }
 
@@ -196,6 +219,9 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
                 {it.status && it.status !== 'ready' && (
                   <span className={`tile-status status-${it.status}`}>{statusInfo(it.status).short}</span>
                 )}
+                {it.in_storage && (
+                  <span className="tile-storage">Storage</span>
+                )}
               </div>
               <div className="tile-label">
                 <div className="tile-name">{it.name}</div>
@@ -210,7 +236,12 @@ export default function ItemList({ items, loading, onEdit, onChanged }) {
 
       {selected && (
         <ItemDetail item={selected} onClose={closeDetail} onEdit={startEdit} onDelete={startDelete}
-          onWear={markWorn} wearing={wearing} onStatus={updateStatus} settingStatus={settingStatus} />
+          onWear={markWorn} wearing={wearing} onStatus={updateStatus} settingStatus={settingStatus}
+          onStorage={updateStorage} settingStorage={settingStorage} onPairings={openPairings} />
+      )}
+
+      {pairingsFor && (
+        <FindPairings item={pairingsFor} items={items} userId={userId} onClose={() => setPairingsFor(null)} />
       )}
 
       {confirming && (

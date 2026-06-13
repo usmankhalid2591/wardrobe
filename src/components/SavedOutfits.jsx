@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../lib/toast.jsx'
 import CategoryIcon from '../lib/categoryIcon'
 import ConfirmDialog from './ConfirmDialog'
+import { downloadOutfitCard } from '../lib/outfitCard'
 
 function findItem(items, name) {
   if (!name) return null
@@ -20,6 +21,7 @@ export default function SavedOutfits({ items }) {
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [exporting, setExporting] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -48,6 +50,17 @@ export default function SavedOutfits({ items }) {
     setOutfits(o => o.filter(x => x.id !== confirming.id))
     setConfirming(null)
     showToast('Outfit removed.')
+  }
+
+  async function exportCard(o) {
+    setExporting(o.id)
+    try {
+      await downloadOutfitCard(o)
+    } catch (err) {
+      showToast(err.message || 'Could not export image.', 'err')
+    } finally {
+      setExporting(null)
+    }
   }
 
   if (loading) {
@@ -83,7 +96,12 @@ export default function SavedOutfits({ items }) {
                 <div className="occasion">{o.occasion}</div>
                 <div className="saved-date">{new Date(o.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
               </div>
-              <button type="button" className="btn ghost" onClick={() => setConfirming(o)}>Remove</button>
+              <div className="saved-actions">
+                <button type="button" className="btn ghost" onClick={() => exportCard(o)} disabled={exporting === o.id}>
+                  {exporting === o.id ? 'Exporting…' : 'Export image'}
+                </button>
+                <button type="button" className="btn ghost" onClick={() => setConfirming(o)}>Remove</button>
+              </div>
             </div>
             {(o.pieces || []).map((p, i) => {
               const match = findItem(items, p.item)

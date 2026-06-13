@@ -2,6 +2,7 @@ import { useState } from 'react'
 import CategoryIcon from '../lib/categoryIcon'
 import { STATUS_ORDER, statusInfo } from '../lib/status'
 import { useEscClose } from '../lib/useEscClose'
+import { formatRs, costPerWear } from '../lib/currency'
 
 const STATUS_ACTION_LABEL = {
   ready: 'Mark ready',
@@ -20,7 +21,7 @@ function formatLastWorn(dateStr) {
   return `Last worn ${then.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
 }
 
-export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, wearing, onStatus, settingStatus }) {
+export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, wearing, onStatus, settingStatus, onStorage, settingStorage, onPairings }) {
   const [lightbox, setLightbox] = useState(false)
 
   useEscClose(() => (lightbox ? setLightbox(false) : onClose()))
@@ -28,6 +29,7 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
   if (!item) return null
 
   const status = item.status || 'ready'
+  const cpw = costPerWear(item.price, item.wear_count)
 
   return (
     <div className="scrim" onClick={onClose}>
@@ -38,6 +40,7 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
           aria-label={item.photo_url ? 'View larger photo' : undefined}>
           {!item.photo_url && <CategoryIcon tags={item.tags} className="detail-icon" />}
           <span className={`status-badge status-${status}`}>{statusInfo(status).label}</span>
+          {item.in_storage && <span className="storage-badge">In storage</span>}
         </div>
 
         <div className="detail-body">
@@ -48,6 +51,15 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
             {item.material && <><span className="dot">·</span>{item.material}</>}
           </div>
 
+          {item.price != null && item.price !== '' && (
+            <div className="card-meta cost-meta">
+              {formatRs(item.price)}
+              {cpw != null
+                ? <><span className="dot">·</span>{formatRs(cpw)} per wear</>
+                : <><span className="dot">·</span>not worn yet</>}
+            </div>
+          )}
+
           <div className="status-actions">
             {STATUS_ORDER.filter(s => s !== status).map(s => (
               <button key={s} type="button" className="chip" disabled={settingStatus}
@@ -55,6 +67,10 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
                 {STATUS_ACTION_LABEL[s]}
               </button>
             ))}
+            <button type="button" className="chip" disabled={settingStorage}
+              onClick={() => onStorage(item, !item.in_storage)}>
+              {item.in_storage ? 'Take out of storage' : 'Move to storage'}
+            </button>
           </div>
 
           {(item.tags || []).length > 0 && (
@@ -78,6 +94,7 @@ export default function ItemDetail({ item, onClose, onEdit, onDelete, onWear, we
           </div>
 
           <div className="sheet-actions">
+            <button type="button" className="btn ghost" onClick={() => onPairings(item)}>Find pairings</button>
             <button type="button" className="btn ghost" onClick={() => onEdit(item)}>Edit</button>
             <button type="button" className="btn danger" onClick={() => onDelete(item)}>Delete</button>
           </div>

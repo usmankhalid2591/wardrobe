@@ -6,12 +6,17 @@ import ItemList from './components/ItemList'
 import ItemForm from './components/ItemForm'
 import OutfitGenerator from './components/OutfitGenerator'
 import SavedOutfits from './components/SavedOutfits'
+import WearLog from './components/WearLog'
+import PackingList from './components/PackingList'
+import ShoppingGaps from './components/ShoppingGaps'
+import Insights from './components/Insights'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [authReady, setAuthReady] = useState(false)
   const [recovery, setRecovery] = useState(false)
   const [tab, setTab] = useState('wardrobe')
+  const [moreTab, setMoreTab] = useState(null)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -80,6 +85,9 @@ export default function App() {
         <button className={`tab ${tab === 'saved' ? 'active' : ''}`} onClick={() => setTab('saved')}>
           Saved
         </button>
+        <button className={`tab ${tab === 'more' ? 'active' : ''}`} onClick={() => setTab('more')}>
+          More
+        </button>
       </nav>
 
       {tab === 'wardrobe' && (
@@ -95,7 +103,7 @@ export default function App() {
             </div>
           )}
 
-          {!loadError && <ItemList items={items} loading={loading} onEdit={openEdit} onChanged={load} />}
+          {!loadError && <ItemList items={items} loading={loading} onEdit={openEdit} onChanged={load} userId={session.user.id} />}
         </>
       )}
 
@@ -118,11 +126,50 @@ export default function App() {
         </div>
       )}
 
+      {tab === 'more' && (
+        <div className="narrow">
+          {loadError ? (
+            <div className="notice err load-error">
+              <span>{loadError}</span>
+              <button className="btn ghost" onClick={load}>Retry</button>
+            </div>
+          ) : moreTab === null ? (
+            <div className="more-grid">
+              <button className="more-card" onClick={() => setMoreTab('packing')}>
+                <span className="choice-title">Packing</span>
+                <span className="choice-sub">Plan outfits for a trip, day by day.</span>
+              </button>
+              <button className="more-card" onClick={() => setMoreTab('insights')}>
+                <span className="choice-title">Insights</span>
+                <span className="choice-sub">Wear stats, value, and wardrobe breakdown.</span>
+              </button>
+              <button className="more-card" onClick={() => setMoreTab('shopping')}>
+                <span className="choice-title">Shopping</span>
+                <span className="choice-sub">AI suggestions for what to add next.</span>
+              </button>
+              <button className="more-card" onClick={() => setMoreTab('log')}>
+                <span className="choice-title">Log</span>
+                <span className="choice-sub">Record what you wore and browse history.</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <button className="more-back" onClick={() => setMoreTab(null)}>&larr; More</button>
+              {moreTab === 'packing' && <PackingList items={items} />}
+              {moreTab === 'insights' && <Insights items={items} />}
+              {moreTab === 'shopping' && <ShoppingGaps items={items} />}
+              {moreTab === 'log' && <WearLog items={items} userId={session.user.id} onChanged={load} />}
+            </>
+          )}
+        </div>
+      )}
+
       {showForm && (
         <ItemForm
           item={editing}
           userId={session.user.id}
           allTags={allTags}
+          items={items}
           onClose={() => { setShowForm(false); setEditing(null) }}
           onSaved={onSaved}
         />

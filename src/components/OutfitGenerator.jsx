@@ -1,26 +1,16 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../lib/toast.jsx'
-import CategoryIcon from '../lib/categoryIcon'
+import { resolveSlots } from '../lib/slots'
+import { useSlotCarousels } from '../lib/useSlotCarousels'
+import { getWeather } from '../lib/weather'
+import SlotCarousels from './SlotCarousels'
 
 const SUGGESTIONS = [
   'Summer wedding', 'First date', 'Business meeting', 'Casual weekend', 'Eid gathering', 'Evening dinner',
   'Job interview', 'Office day', 'Friends hangout', 'Date night', 'Travel day', 'Religious gathering',
   'Birthday party', 'Outdoor brunch', 'Gym workout', 'Rainy day', 'Winter outing', 'Funeral / condolence',
 ]
-
-const ITEM_W = 84
-const GAP = 10
-const STEP = ITEM_W + GAP
-
-function findItem(items, name) {
-  if (!name) return null
-  const norm = s => s.trim().toLowerCase()
-  const target = norm(name)
-  return items.find(it => norm(it.name) === target)
-    || items.find(it => norm(it.name).includes(target) || target.includes(norm(it.name)))
-    || null
-}
 
 export default function OutfitGenerator({ items, userId }) {
   const showToast = useToast()
@@ -30,26 +20,23 @@ export default function OutfitGenerator({ items, userId }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [selections, setSelections] = useState({})
-  const trackRefs = useRef({})
+  const [weather, setWeather] = useState(null)
+  const [surprising, setSurprising] = useState(false)
+  const { selections, trackRefs, reset, handleScroll, selectItem, chosenPiece } = useSlotCarousels()
 
-  const readyItems = items.filter(it => (it.status || 'ready') === 'ready')
+  const readyItems = items.filter(it => (it.status || 'ready') === 'ready' && !it.in_storage)
 
-  // Resolve AI slot/item names to actual wardrobe items, dropping anything
-  // that doesn't match and any slot left with no matches.
-  const slots = (result?.slots || [])
-    .map(slot => ({
-      role: slot.role,
-      items: (slot.items || [])
-        .map(p => ({ ...p, match: findItem(items, p.item) }))
-        .filter(p => p.match),
-    }))
-    .filter(slot => slot.items.length > 0)
+  const slots = resolveSlots(result?.slots, items)
 
-  async function generate(occ) {
+  useEffect(() => {
+    getWeather().then(setWeather)
+  }, [])
+
+  async function generate(occ, opts = {}) {
+    const { surprise = false } = opts
     const text = (occ ?? occasion).trim()
-    if (!text) return
-    setBusy(true); setError(''); setResult(null); setSaved(false); setSelections({})
+    if (!text && !surprise) return
+    setBusy(true); setError(''); setResult(null); setSaved(false); reset()
     try {
       const wardrobe = readyItems.map(it => ({
         name: it.name, brand: it.brand, color: it.color,
@@ -58,42 +45,25 @@ export default function OutfitGenerator({ items, userId }) {
       const res = await fetch('/.netlify/functions/generate-outfit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ occasion: text, wardrobe }),
+        body: JSON.stringify({ occasion: text, wardrobe, weather, surprise }),
       })
       if (!res.ok) {
         const t = await res.text()
         throw new Error(t || `Request failed (${res.status})`)
       }
       const data = await res.json()
-      setResult({ ...data, occasion: text })
+      setResult({ ...data, occasion: text || data.occasion || 'Surprise outfit' })
     } catch (err) {
       setError(err.message || 'Could not generate an outfit.')
     } finally {
       setBusy(false)
+      setSurprising(false)
     }
   }
 
-  function handleScroll(slotIndex, maxIndex) {
-    return e => {
-      const el = e.currentTarget
-      clearTimeout(el._scrollTimer)
-      el._scrollTimer = setTimeout(() => {
-        let idx = Math.round(el.scrollLeft / STEP)
-        idx = Math.max(0, Math.min(maxIndex, idx))
-        setSelections(s => (s[slotIndex] === idx ? s : { ...s, [slotIndex]: idx }))
-      }, 100)
-    }
-  }
-
-  function selectItem(slotIndex, itemIndex) {
-    const track = trackRefs.current[slotIndex]
-    if (track) track.scrollTo({ left: itemIndex * STEP, behavior: 'smooth' })
-    setSelections(s => ({ ...s, [slotIndex]: itemIndex }))
-  }
-
-  function chosenPiece(slot, slotIndex) {
-    const idx = Math.min(selections[slotIndex] ?? 0, slot.items.length - 1)
-    return slot.items[idx]
+  function surpriseMe() {
+    setSurprising(true)
+    generate('', { surprise: true })
   }
 
   async function saveOutfit() {
@@ -122,14 +92,25 @@ export default function OutfitGenerator({ items, userId }) {
     <div>
       <p className="gen-intro">Tell me where you're headed. I'll dress you from your own wardrobe.</p>
 
+      {weather && (
+        <div className="weather-chip">
+          {weather.tempC}°C, {weather.description} — I'll factor this in.
+        </div>
+      )}
+
       <div className="gen-input-row">
         <input value={occasion} onChange={e => setOccasion(e.target.value)}
           placeholder="e.g. outdoor brunch in Islamabad"
           onKeyDown={e => e.key === 'Enter' && generate()} />
         <button className="btn" onClick={() => generate()} disabled={busy || readyItems.length === 0}>
-          {busy ? '…' : 'Style me'}
+          {busy && !surprising ? '…' : 'Style me'}
         </button>
       </div>
+
+      <button type="button" className="btn ghost surprise-btn" onClick={surpriseMe}
+        disabled={busy || readyItems.length === 0}>
+        {surprising ? 'Thinking…' : '✨ Surprise me'}
+      </button>
 
       <div className="chips">
         {SUGGESTIONS.map(s => (
@@ -160,36 +141,8 @@ export default function OutfitGenerator({ items, userId }) {
             </button>
           </div>
 
-          {slots.map((slot, i) => {
-            const idx = Math.min(selections[i] ?? 0, slot.items.length - 1)
-            const chosen = slot.items[idx]
-            return (
-              <div className="carousel-row" key={i}>
-                <div className="carousel-label">{slot.role}</div>
-                <div
-                  className="carousel-track"
-                  ref={el => { trackRefs.current[i] = el }}
-                  onScroll={handleScroll(i, slot.items.length - 1)}
-                >
-                  {slot.items.map((p, j) => (
-                    <div
-                      className={`carousel-item${j === idx ? ' selected' : ''}`}
-                      key={j}
-                      onClick={() => selectItem(i, j)}
-                    >
-                      <div className="carousel-item-photo"
-                        style={p.match?.photo_url ? { backgroundImage: `url(${p.match.photo_url})` } : {}}>
-                        {!p.match?.photo_url && <CategoryIcon tags={p.match?.tags} className="tile-icon" />}
-                      </div>
-                      <div className="carousel-item-name">{p.match?.name || p.item}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="carousel-name">{chosen.match?.name || chosen.item}</div>
-                {chosen.why && <div className="carousel-why">{chosen.why}</div>}
-              </div>
-            )
-          })}
+          <SlotCarousels slots={slots} selections={selections} trackRefs={trackRefs}
+            handleScroll={handleScroll} selectItem={selectItem} />
 
           {result.note && <div className="outfit-note">{result.note}</div>}
         </div>

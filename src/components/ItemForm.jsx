@@ -5,18 +5,35 @@ import { useToast } from '../lib/toast.jsx'
 import { useEscClose } from '../lib/useEscClose'
 import TagInput from './TagInput'
 
-const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '' }
+const blank = { name: '', brand: '', color: '', material: '', notes: '', tags: [], photo_url: '', price: '', in_storage: false }
 
-export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
+// Looks for existing pieces that share a category tag and a similar color —
+// a lightweight nudge to avoid logging the same item twice from a photo.
+function findDuplicates(items, { category, color, excludeId }) {
+  const col = (color || '').trim().toLowerCase()
+  const cat = (category || '').trim().toLowerCase()
+  if (!col || !cat) return []
+  return (items || []).filter(it => {
+    if (it.id === excludeId) return false
+    const tags = (it.tags || []).map(t => t.toLowerCase())
+    if (!tags.includes(cat)) return false
+    const itColor = (it.color || '').toLowerCase()
+    if (!itColor) return false
+    return itColor.includes(col) || col.includes(itColor)
+  }).slice(0, 4)
+}
+
+export default function ItemForm({ item, userId, allTags, items, onClose, onSaved }) {
   const showToast = useToast()
   const [form, setForm] = useState(item
-    ? { ...item, tags: item.tags || [] }
+    ? { ...item, tags: item.tags || [], price: item.price ?? '', in_storage: !!item.in_storage }
     : blank)
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(item?.photo_url || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [identifying, setIdentifying] = useState(false)
+  const [duplicates, setDuplicates] = useState([])
   // 'choice' (new items only) -> 'ai-photo' -> 'form', or straight to 'form'
   const [mode, setMode] = useState(item ? 'form' : 'choice')
   // In-app camera state: null = starting up, true = unavailable (fall back to file picker), false = live
@@ -130,6 +147,11 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
             tags,
           }
         })
+        setDuplicates(findDuplicates(items, {
+          category: data.category,
+          color: data.color,
+          excludeId: item?.id,
+        }))
       }
     } catch {
       // Identification is a nice-to-have — fall through to the form either way.
@@ -178,6 +200,8 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
         notes: form.notes.trim(),
         tags: form.tags,
         photo_url,
+        price: form.price === '' || form.price === null ? null : Number(form.price),
+        in_storage: !!form.in_storage,
       }
 
       if (item?.id) {
@@ -295,6 +319,19 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
       <div className="sheet" onClick={e => e.stopPropagation()}>
         <h2>{item ? 'Edit piece' : 'Add a piece'}</h2>
         {error && <div className="notice err">{error}</div>}
+        {duplicates.length > 0 && (
+          <div className="notice warn dup-notice">
+            <div>You may already have something like this:</div>
+            <ul className="dup-list">
+              {duplicates.map(d => (
+                <li key={d.id}>{d.name}{d.color ? ` — ${d.color}` : ''}{d.brand ? ` (${d.brand})` : ''}</li>
+              ))}
+            </ul>
+            <button type="button" className="btn ghost dup-dismiss" onClick={() => setDuplicates([])}>
+              It's different, dismiss
+            </button>
+          </div>
+        )}
         <form onSubmit={save}>
           <div className="field">
             <label>Name</label>
@@ -315,6 +352,16 @@ export default function ItemForm({ item, userId, allTags, onClose, onSaved }) {
             <label>Material</label>
             <input value={form.material} onChange={e => set('material', e.target.value)} />
           </div>
+          <div className="field">
+            <label>Price (Rs)</label>
+            <input type="number" min="0" inputMode="decimal" value={form.price}
+              onChange={e => set('price', e.target.value)} placeholder="Optional — for cost-per-wear" />
+          </div>
+          <label className="checkbox-row">
+            <input type="checkbox" checked={!!form.in_storage}
+              onChange={e => set('in_storage', e.target.checked)} />
+            In seasonal storage (hidden from the Stylist)
+          </label>
           <div className="field">
             <label>Tags</label>
             <TagInput value={form.tags} onChange={t => set('tags', t)} suggestions={allTags} />
